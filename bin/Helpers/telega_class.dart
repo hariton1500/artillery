@@ -11,7 +11,7 @@ class Telega {
 
   Telega({required String tkn}) {
     url = 'https://api.telegram.org/bot$tkn/';
-    updateId = 0;
+    updateId = DateTime.now().millisecondsSinceEpoch;
     log('Telega object created!');
 
     try {
@@ -21,6 +21,30 @@ class Telega {
     } catch (e) {
       log(e.toString());
       exit(0);
+    }
+  }
+
+  Future<void> updater() async {
+    try {
+      log('req = $updateId');
+      var res = await http.get(Uri.parse(url! + 'getUpdates?offset=$updateId'));
+      //updateId = updateId! - 1;
+      String body = res.body;
+      if (body != '{"ok":true,"result":[]}') {
+        log(res.body);
+        if (body.startsWith('{"ok":true,"result":')) {
+          var messages = jsonDecode(body)['result'];
+          //log(messages.runtimeType);
+          if (messages is List) {
+            for (var message in messages) {
+              updateId = message['update_id'] + 1;
+              log(updateId);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      log(e.toString());
     }
   }
 }

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'telega_class.dart';
+import 'user_class.dart';
 
-void log(String mess) {
+void log(dynamic mess) {
   print('[${DateTime.now()}] $mess');
 }
 
@@ -10,6 +12,8 @@ void log(String mess) {
 class GameGlobal {
   Telega? telega;
   String? tkn;
+  List<User> users = [];
+  int pollingTime = 2000; //time to poll Telegramm Bot updates
 
   DateTime now() {
     return DateTime.now();
@@ -21,5 +25,10 @@ class GameGlobal {
     log('token is $tkn');
 
     telega = Telega(tkn: tkn);
+  }
+
+  void runPeriodics() {
+    Timer.periodic(
+        Duration(milliseconds: pollingTime), ((timer) => telega!.updater()));
   }
 }
