@@ -1,7 +1,9 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
+import 'helpers.dart';
 import 'package:http/http.dart' as http;
+
+// class to work with Telegram Bot API
 
 class Telega {
   String? url;
@@ -14,7 +16,8 @@ class Telega {
 
     try {
       var res = http.get(Uri.parse(url! + 'getMe'));
-      res.then((value) => log('my name is ${jsonDecode(value.body)['result']['first_name']}'));
+      res.then((value) =>
+          log('my name is ${jsonDecode(value.body)['result']['first_name']}'));
     } catch (e) {
       log(e.toString());
       exit(0);
