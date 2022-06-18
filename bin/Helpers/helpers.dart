@@ -16,6 +16,7 @@ class GameGlobal {
   String? tkn;
   List<User> users = [];
   int pollingTime = 2000; //time to poll Telegramm Bot updates
+  List<User> queue = [];
 
   DateTime now() {
     return DateTime.now();
@@ -27,6 +28,9 @@ class GameGlobal {
     log('token is $tkn');
 
     telega = Telega(tkn: tkn);
+
+    // start working with queue
+    runQueueBatch();
   }
 
   void runPeriodics() {
@@ -43,7 +47,8 @@ class GameGlobal {
   void handle(message) {
     log('start handle:');
     try {
-      if (message is Map && message.containsKey('message')) {
+      log(message);
+      if (message is Map && message.containsKey('message') && !message['message'].containsKey('location')) {
         var decodedMessage = message['message'];
         //log(decodedMessage.toString());
 
@@ -63,13 +68,37 @@ class GameGlobal {
           answer(users.firstWhere((element) => element.telegramId == fromId),
               text);
         }
-      } else {
+      }
+      if (message is Map && message.containsKey('callback_query')) {
         log('decoding failed:');
-        log(message);
+        log('from: ${message['callback_query']['from']['id']}');
+        if (!isRegisteredUser(message['callback_query']['from']['id'])) {
+          users.add(User(
+              telegramId: message['callback_query']['from']['id'],
+              name: message['callback_query']['from']['first_name'],
+              status: 'justStarted'));
+        }
         answer(
             users.firstWhere((element) =>
                 element.telegramId == message['callback_query']['from']['id']),
-            message['callback_query']['data']);
+            data['rigistered']!);
+      }
+      if (message is Map && message.containsKey('message') && message['message'].containsKey('location')) {
+        log('it is location message:');
+        log('from: ${message['message']['from']['id']}');
+        if (!isRegisteredUser(message['message']['from']['id'])) {
+          users.add(User(
+              telegramId: message['message']['from']['id'],
+              name: message['message']['from']['first_name'],
+              status: 'justRegistered'));
+        }
+        users.firstWhere((element) =>
+                element.telegramId == message['message']['from']['id'])
+            .location = message['message']['location'];
+        answer(
+            users.firstWhere((element) =>
+                element.telegramId == message['message']['from']['id']),
+            'gotLocationForEnterToBattle');
       }
     } catch (e) {
       log(e.toString());
@@ -102,8 +131,45 @@ class GameGlobal {
         break;
       case '/register':
         log('wants register');
+        user.status = 'justRegistered';
+        telega!.sendMessage(user, data['mainmenu']!,
+              reply: jsonEncode({
+                'inline_keyboard': [
+                  [
+                    {'text': 'join to battle', 'callback_data': '/jointobattle'}
+                  ]
+                ]
+              }));
+        break;
+      case '/jointobattle':
+        log('wants join to battle');
+        user.status = 'waitingGeoPosToJoinBattle';
+        telega!.sendMessage(user, data['askGeoPosToJoinBattle']!);
+        break;
+      case 'gotLocationForEnterToBattle':
+        log('looking for battle to join for user: ${user.telegramId}');
+        user.status = 'lookingForBattleToJoin';
+        telega!.sendMessage(user, data['lookingBattleToEnter']!);
+        queue.add(user);
         break;
       default:
     }
   }
+
+  bool isRegisteredUser(int id) {
+    return users.where((element) => element.telegramId == id).isNotEmpty;
+  }
+
+  void runQueueBatch() async {
+    while (true) {
+      if (queue.length == 2) {
+        log('queue length is 2');
+        startBattle(queue);
+        queue.clear();
+      }
+      await Future.delayed(Duration(milliseconds: 1000));
+  }
+}
+
+  void startBattle(List<User> newBattleUsers) {}
 }
