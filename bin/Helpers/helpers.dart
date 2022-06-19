@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'battle_class.dart';
 import 'data.dart';
 import 'telega_class.dart';
 import 'user_class.dart';
@@ -17,6 +18,8 @@ class GameGlobal {
   List<User> users = [];
   int pollingTime = 2000; //time to poll Telegramm Bot updates
   List<User> queue = [];
+
+  List<Battle> battles = [];
 
   DateTime now() {
     return DateTime.now();
@@ -171,5 +174,12 @@ class GameGlobal {
   }
 }
 
-  void startBattle(List<User> newBattleUsers) {}
+  void startBattle(List<User> newBattleUsers) {
+    log('starting new battle');
+    battles.add(Battle(participants: newBattleUsers));
+    for (User user in newBattleUsers) {
+      user.status = 'inBattle';
+      telega!.sendMessage(user, '${data['battleStarted']!}\nYou got a list of weapons:\n${user.weaponsShowList()}');
+    }
+  }
 }

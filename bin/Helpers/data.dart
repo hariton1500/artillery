@@ -11,4 +11,6 @@ Map<String, String> data = {
       'You are registered!',
   'lookingBattleToEnter':
       'Looking for a battle... Please wait...',
+  'battleStarted':
+      'Battle started!',
 };
