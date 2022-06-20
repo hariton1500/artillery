@@ -32,8 +32,32 @@ class GameGlobal {
 
     telega = Telega(tkn: tkn);
 
+    File state = File('state.txt');
+    fromJson(state.readAsStringSync());
+
     // start working with queue
     runQueueBatch();
+  }
+
+  String toJson() {
+    return jsonEncode({'users': users, 'queue': queue, 'battles': battles});
+  }
+
+  void fromJson(String json) {
+    Map<String, dynamic> decoded = jsonDecode(json);
+    log(decoded);
+    users = decoded['users'] as List<User>;
+    queue = decoded['queue'];
+    battles = decoded['battles'];
+    log('loaded users: $users');
+  }
+
+  void save() {
+    log(toJson());
+    var file = File('state.txt');
+    file.createSync();
+    file.openWrite(mode: FileMode.write);
+    file.writeAsStringSync(toJson());
   }
 
   void runPeriodics() {
@@ -51,7 +75,9 @@ class GameGlobal {
     log('start handle:');
     try {
       log(message);
-      if (message is Map && message.containsKey('message') && !message['message'].containsKey('location')) {
+      if (message is Map &&
+          message.containsKey('message') &&
+          !message['message'].containsKey('location')) {
         var decodedMessage = message['message'];
         //log(decodedMessage.toString());
 
@@ -86,7 +112,9 @@ class GameGlobal {
                 element.telegramId == message['callback_query']['from']['id']),
             data['rigistered']!);
       }
-      if (message is Map && message.containsKey('message') && message['message'].containsKey('location')) {
+      if (message is Map &&
+          message.containsKey('message') &&
+          message['message'].containsKey('location')) {
         log('it is location message:');
         log('from: ${message['message']['from']['id']}');
         if (!isRegisteredUser(message['message']['from']['id'])) {
@@ -95,7 +123,8 @@ class GameGlobal {
               name: message['message']['from']['first_name'],
               status: 'justRegistered'));
         }
-        users.firstWhere((element) =>
+        users
+            .firstWhere((element) =>
                 element.telegramId == message['message']['from']['id'])
             .location = message['message']['location'];
         answer(
@@ -136,13 +165,13 @@ class GameGlobal {
         log('wants register');
         user.status = 'justRegistered';
         telega!.sendMessage(user, data['mainmenu']!,
-              reply: jsonEncode({
-                'inline_keyboard': [
-                  [
-                    {'text': 'join to battle', 'callback_data': '/jointobattle'}
-                  ]
+            reply: jsonEncode({
+              'inline_keyboard': [
+                [
+                  {'text': 'join to battle', 'callback_data': '/jointobattle'}
                 ]
-              }));
+              ]
+            }));
         break;
       case '/jointobattle':
         log('wants join to battle');
@@ -156,7 +185,11 @@ class GameGlobal {
         queue.add(user);
         break;
       default:
+        log('text not recognized.');
+        log('current user status is ${user.status}');
+        answerToStatus(user, text);
     }
+    save();
   }
 
   bool isRegisteredUser(int id) {
@@ -171,15 +204,26 @@ class GameGlobal {
         queue.clear();
       }
       await Future.delayed(Duration(milliseconds: 1000));
+    }
   }
-}
 
   void startBattle(List<User> newBattleUsers) {
     log('starting new battle');
     battles.add(Battle(participants: newBattleUsers));
     for (User user in newBattleUsers) {
       user.status = 'inBattle';
-      telega!.sendMessage(user, '${data['battleStarted']!}\nYou got a list of weapons:\n${user.weaponsShowList()}');
+      telega!.sendMessage(user,
+          '${data['battleStarted']!}\nYou got a list of weapons:\n${user.weaponsShowList()}');
+    }
+  }
+
+  void answerToStatus(User user, String text) {
+    switch (user.status!.toLowerCase()) {
+      case 'juststarted':
+        telega!.sendMessage(
+            user, 'command is not recognized.\n${data['mainmenu']}');
+        break;
+      default:
     }
   }
 }
