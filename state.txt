@@ -1,1 +1,1 @@
-{"users":["{\"telegramId\":403515346,\"name\":\"Харитон\",\"status\":\"justStarted\",\"location\":null,\"weapons\":[\"{\\\"name\\\":\\\"CEASER\\\",\\\"description\\\":\\\"French self-propelled 155 mm/52-calibre gun-howitzer\\\",\\\"radius\\\":42}\"]}"],"queue":[],"battles":[]}
+{"users":[{"telegramId":403515346,"name":"Харитон","status":"justStarted","location":null,"battle":null,"weapons":[{"name":"CEASER","description":"French self-propelled 155 mm/52-calibre gun-howitzer","radius":42}]}],"queue":[],"battles":[]}

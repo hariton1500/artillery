@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'user_class.dart';
 
 class Battle {
@@ -9,6 +11,13 @@ class Battle {
     }
 
   }
+
+  Map<String, dynamic> toJson() => {
+        'participants': participants.map((user) => user.toJson()).toList(),
+      };
+  
+  Battle.fromJson(Map<String, dynamic> json):
+      participants = json['participants'].map((user) => User.fromJson(user)).toList();
 }
 
 

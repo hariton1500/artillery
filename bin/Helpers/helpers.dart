@@ -32,32 +32,28 @@ class GameGlobal {
 
     telega = Telega(tkn: tkn);
 
-    File state = File('state.txt');
-    fromJson(state.readAsStringSync());
-
     // start working with queue
     runQueueBatch();
   }
 
-  String toJson() {
-    return jsonEncode({'users': users, 'queue': queue, 'battles': battles});
-  }
+  Map<String, dynamic> toJson() => {
+    'users': users,
+    'queue': queue,
+    'battles': battles
+    };
+  
 
-  void fromJson(String json) {
-    Map<String, dynamic> decoded = jsonDecode(json);
-    log(decoded);
-    users = decoded['users'] as List<User>;
-    queue = decoded['queue'];
-    battles = decoded['battles'];
-    log('loaded users: $users');
-  }
+  GameGlobal.fromJson(Map<String, dynamic> json)
+    : users = json['users'].map((user) => User.fromJson(user)).toList(),
+      queue = json['queue'].map((user) => User.fromJson(user)).toList(),
+      battles = json['battles'].map((battle) => Battle.fromJson(battle)).toList();
 
   void save() {
-    log(toJson());
+    log('saving state');
     var file = File('state.txt');
     file.createSync();
     file.openWrite(mode: FileMode.write);
-    file.writeAsStringSync(toJson());
+    file.writeAsStringSync(jsonEncode(this));
   }
 
   void runPeriodics() {
