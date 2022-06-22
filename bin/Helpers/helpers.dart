@@ -215,6 +215,7 @@ class GameGlobal {
       default:
         log('text not recognized.');
         log('current user status is ${user.status}');
+        log('sending to status handler');
         answerToStatus(user, text);
     }
     save();
