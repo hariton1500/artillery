@@ -36,12 +36,8 @@ class GameGlobal {
     runQueueBatch();
   }
 
-  Map<String, dynamic> toJson() => {
-    'users': users,
-    'queue': queue,
-    'battles': battles
-    };
-  
+  Map<String, dynamic> toJson() =>
+      {'users': users, 'queue': queue, 'battles': battles};
 
   GameGlobal.fromJson(Map<String, dynamic> json) {
     log('start loading users');
@@ -76,6 +72,7 @@ class GameGlobal {
 
     // start working with queue
     runQueueBatch();
+    runBattles();
   }
   void save() {
     log('saving state');
@@ -102,7 +99,8 @@ class GameGlobal {
       log(message);
       if (message is Map &&
           message.containsKey('message') &&
-          !message['message'].containsKey('location')) {
+          !message['message'].containsKey('location') &&
+          !message['message'].containsKey('document')) {
         var decodedMessage = message['message'];
         //log(decodedMessage.toString());
 
@@ -122,6 +120,21 @@ class GameGlobal {
           answer(users.firstWhere((element) => element.telegramId == fromId),
               text);
         }
+      }
+      if (message is Map &&
+          message.containsKey('message') &&
+          message['message'].containsKey('document')) {
+        log('message is document.');
+        if (!isRegisteredUser(message['message']['from']['id'])) {
+          users.add(User(
+              telegramId: message['message']['from']['id'],
+              name: message['message']['from']['first_name'],
+              status: 'justRegistered'));
+        }
+        answer(
+            users.firstWhere((element) =>
+                element.telegramId == message['message']['from']['id']),
+            'itwasdocument');
       }
       if (message is Map && message.containsKey('callback_query')) {
         log('message is callback_query');
@@ -150,11 +163,16 @@ class GameGlobal {
               telegramId: message['message']['from']['id'],
               name: message['message']['from']['first_name'],
               status: 'justRegistered'));
+        } else {
+          log('user is registered');
         }
         users
             .firstWhere((element) =>
                 element.telegramId == message['message']['from']['id'])
-            .location = message['message']['location'];
+            .location = {
+          'latitude': message['message']['location']['latitude'] as double,
+          'longitude': message['message']['location']['longitude'] as double
+        };
         answer(
             users.firstWhere((element) =>
                 element.telegramId == message['message']['from']['id']),
@@ -192,7 +210,7 @@ class GameGlobal {
       case '/register':
         log('wants register');
         user.status = 'justRegistered';
-        telega!.sendMessage(user, data['mainmenu']!,
+        telega?.sendMessage(user, data['mainmenu']!,
             reply: jsonEncode({
               'inline_keyboard': [
                 [
@@ -204,13 +222,18 @@ class GameGlobal {
       case '/jointobattle':
         log('wants join to battle');
         user.status = 'waitingGeoPosToJoinBattle';
-        telega!.sendMessage(user, data['askGeoPosToJoinBattle']!);
+        telega?.sendMessage(user, data['askGeoPosToJoinBattle']!);
         break;
-      case 'gotLocationForEnterToBattle':
+      case 'gotlocationforentertobattle':
         log('looking for battle to join for user: ${user.telegramId}');
         user.status = 'lookingForBattleToJoin';
-        telega!.sendMessage(user, data['lookingBattleToEnter']!);
+        telega?.sendMessage(user, data['lookingBattleToEnter']!);
         queue.add(user);
+        break;
+      case 'leavebattle':
+        log('${user.telegramId} leaves battle');
+        user.battle?.participants.remove(user);
+        user.status = 'justStarted';
         break;
       default:
         log('text not recognized.');
@@ -225,11 +248,12 @@ class GameGlobal {
     return users.where((element) => element.telegramId == id).isNotEmpty;
   }
 
-  void runQueueBatch() async {
+  Future<void> runQueueBatch() async {
     while (true) {
       if (queue.length == 2) {
         log('queue length is 2');
         startBattle(queue);
+        await Future.delayed(Duration(milliseconds: 100));
         queue.clear();
       }
       await Future.delayed(Duration(milliseconds: 1000));
@@ -242,16 +266,16 @@ class GameGlobal {
     for (User user in newBattleUsers) {
       user.status = 'inBattle';
       telega!.sendMessage(user,
-          '${data['battleStarted']!}\nYou got a list of weapons:\n${user.weaponsShowList()}');
+          '${data['welcomeToBattle']!}\nYou got a list of weapons:\n${user.weaponsShowList()}');
     }
+    save();
   }
 
   void answerToStatus(User user, String text) {
     switch (user.status!.toLowerCase()) {
       case 'juststarted':
         telega!.sendMessage(
-            user,
-            'command is not recognized.\n${data['mainmenu']}',
+            user, 'command is not recognized.\n${data['mainmenu']}',
             reply: jsonEncode({
               'inline_keyboard': [
                 [
@@ -260,7 +284,50 @@ class GameGlobal {
               ]
             }));
         break;
+      case 'waitinggeopostojoinbattle':
+        telega?.sendMessage(user, 'we expecting your location, warrior!');
+        break;
+      case 'lookingforbattletojoin':
+        telega?.sendMessage(user, data['lookingBattleToEnter']!);
+        break;
       default:
+    }
+  }
+
+  Future<void> runBattles() async {
+    while (true) {
+      for (var battle in battles) {
+        if (battle.participants.length == 1) {
+          telega?.sendMessage(battle.participants.first, 'you win!');
+          battle.participants.first.status = 'justStarted';
+          battles.remove(battle);
+          save();
+        }
+        switch (battle.status.toLowerCase()) {
+          case 'justcreated':
+            for (User participant in battle.participants) {
+              telega?.sendMessage(participant, data['welcomeToBattle']!,
+                  reply: jsonEncode({
+                    'inline_keyboard': [
+                      [
+                        {'text': 'make fire', 'callback_data': '/makeFire'},
+                        {'text': 'run drone', 'callback_data': '/runDrone'},
+                      ],
+                      [
+                        {
+                          'text': 'leave battle',
+                          'callback_data': '/leaveBattle'
+                        },
+                      ]
+                    ]
+                  }));
+              battle.status = 'mainMenu';
+            }
+            break;
+          default:
+        }
+      }
+      await Future.delayed(Duration(milliseconds: 1000));
     }
   }
 }

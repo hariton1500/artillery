@@ -16,7 +16,8 @@ class User {
 
   String weaponsShowList() {
     String result = '';
-    weapons.map((weapon) => result += '${weapon.name} - ${weapon.description} - ${weapon.radius} km\n').toList();
+    weapons.map((weapon) => result +=
+        '${weapon.name} - ${weapon.description} - ${weapon.radius} km\n');
     return result;
   }
 
@@ -30,16 +31,17 @@ class User {
       };
 
   User.fromJson(Map<String, dynamic> json) {
-      log('start loading user');
-      telegramId = json['telegramId'];
-      name = json['name'];
-      status = json['status'];
-      location = json['location'];
-      if (json['weapons'] is List) {
-        for (var weapon in json['weapons']) {
-          weapons.add(Weapon.fromJson(weapon));
-        }
+    log('start loading user');
+    telegramId = json['telegramId'];
+    name = json['name'];
+    status = json['status'];
+    location?['latitude'] = json['location']['latitude'] as double;
+    location?['longitude'] = json['location']['longitude'] as double;
+    if (json['weapons'] is List) {
+      for (var weapon in json['weapons']) {
+        weapons.add(Weapon.fromJson(weapon));
       }
-      log('loaded weapons: ${weaponsShowList()}');
+    }
+    log('loaded weapons: ${weaponsShowList()}');
   }
-} 
+}
