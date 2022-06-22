@@ -43,11 +43,40 @@ class GameGlobal {
     };
   
 
-  GameGlobal.fromJson(Map<String, dynamic> json)
-    : users = json['users'].map((user) => User.fromJson(user)).toList(),
-      queue = json['queue'].map((user) => User.fromJson(user)).toList(),
-      battles = json['battles'].map((battle) => Battle.fromJson(battle)).toList();
+  GameGlobal.fromJson(Map<String, dynamic> json) {
+    log('start loading users');
+    if (json['users'] is List) {
+      for (var user in json['users']) {
+        users.add(User.fromJson(user));
+      }
+    }
+    //users = json['users'].map((user) => User.fromJson(user)).toList();
+    log('loaded users: ${users.length}');
+    log('start loading queue');
+    if (json['queue'] is List) {
+      for (var user in json['queue']) {
+        queue.add(User.fromJson(user));
+      }
+    }
+    //queue = json['queue'].map((user) => User.fromJson(user)).toList();
+    log('loaded queue: ${queue.length}');
+    log('start loading battles');
+    if (json['battles'] is List) {
+      for (var battle in json['battles']) {
+        battles.add(Battle.fromJson(battle));
+      }
+    }
+    //battles = json['battles'].map((battle) => Battle.fromJson(battle)).toList();
+    log('loaded battles: ${battles.length}');
+    File tknFile = File('tkn.txt');
+    String tkn = tknFile.readAsStringSync();
+    log('token is $tkn');
 
+    telega = Telega(tkn: tkn);
+
+    // start working with queue
+    runQueueBatch();
+  }
   void save() {
     log('saving state');
     var file = File('state.txt');
@@ -62,7 +91,7 @@ class GameGlobal {
   }
 
   void runLongPolling() {
-    telega!.longPolling().listen((event) {
+    telega?.longPolling().listen((event) {
       handle(event);
     });
   }
@@ -95,9 +124,12 @@ class GameGlobal {
         }
       }
       if (message is Map && message.containsKey('callback_query')) {
-        log('decoding failed:');
+        log('message is callback_query');
         log('from: ${message['callback_query']['from']['id']}');
+        log('data: ${message['callback_query']['data']}');
         if (!isRegisteredUser(message['callback_query']['from']['id'])) {
+          log('user is not registered');
+          log('adding user to users');
           users.add(User(
               telegramId: message['callback_query']['from']['id'],
               name: message['callback_query']['from']['first_name'],
@@ -106,7 +138,7 @@ class GameGlobal {
         answer(
             users.firstWhere((element) =>
                 element.telegramId == message['callback_query']['from']['id']),
-            data['rigistered']!);
+            message['callback_query']['data']);
       }
       if (message is Map &&
           message.containsKey('message') &&
@@ -217,7 +249,15 @@ class GameGlobal {
     switch (user.status!.toLowerCase()) {
       case 'juststarted':
         telega!.sendMessage(
-            user, 'command is not recognized.\n${data['mainmenu']}');
+            user,
+            'command is not recognized.\n${data['mainmenu']}',
+            reply: jsonEncode({
+              'inline_keyboard': [
+                [
+                  {'text': 'join to battle', 'callback_data': '/jointobattle'}
+                ]
+              ]
+            }));
         break;
       default:
     }

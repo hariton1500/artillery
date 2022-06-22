@@ -1,23 +1,22 @@
-import 'dart:convert';
-
 import 'battle_class.dart';
+import 'helpers.dart';
 import 'weapon_class.dart';
 
 class User {
-  final int telegramId;
-  final String name;
+  int? telegramId;
+  String? name;
   String? status;
   Map<String, double>? location;
 
   Battle? battle;
 
-  List<Weapon>? weapons;
+  List<Weapon> weapons = [];
 
   User({required this.telegramId, required this.name, this.status});
 
   String weaponsShowList() {
     String result = '';
-    weapons!.map((weapon) => result += '${weapon.name} - ${weapon.description} - ${weapon.radius} km\n').toList();
+    weapons.map((weapon) => result += '${weapon.name} - ${weapon.description} - ${weapon.radius} km\n').toList();
     return result;
   }
 
@@ -30,10 +29,17 @@ class User {
         'weapons': weapons,
       };
 
-  User.fromJson(Map<String, dynamic> json)
-    : telegramId = json['telegramId'],
-      name = json['name'],
-      status = json['status'],
-      location = json['location'],
-      weapons = json['weapons'].map((weapon) => Weapon.fromJson(weapon)).toList();
-}
+  User.fromJson(Map<String, dynamic> json) {
+      log('start loading user');
+      telegramId = json['telegramId'];
+      name = json['name'];
+      status = json['status'];
+      location = json['location'];
+      if (json['weapons'] is List) {
+        for (var weapon in json['weapons']) {
+          weapons.add(Weapon.fromJson(weapon));
+        }
+      }
+      log('loaded weapons: ${weaponsShowList()}');
+  }
+} 
