@@ -87,6 +87,6 @@ class Telega {
     if (reply != null) {
       _body['reply_markup'] = reply;
     }
-    var res = http.post(Uri.parse(url! + 'sendMessage'), body: _body);
+    http.post(Uri.parse(url! + 'sendMessage'), body: _body);
   }
 }

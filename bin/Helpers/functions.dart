@@ -18,3 +18,7 @@ num getDistanceFromLatLonInM(lat1,lon1,lat2,lon2) {
 double deg2rad(deg) {
   return deg * (Math.pi/180);
 }
+
+DateTime now() {
+  return DateTime.now();
+}

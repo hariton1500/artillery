@@ -21,10 +21,6 @@ class GameGlobal {
 
   List<Battle> battles = [];
 
-  DateTime now() {
-    return DateTime.now();
-  }
-
   GameGlobal() {
     File tknFile = File('tkn.txt');
     String tkn = tknFile.readAsStringSync();
@@ -34,12 +30,19 @@ class GameGlobal {
 
     // start working with queue
     runQueueBatch();
+    runBattles();
   }
 
   Map<String, dynamic> toJson() =>
       {'users': users, 'queue': queue, 'battles': battles};
 
   GameGlobal.fromJson(Map<String, dynamic> json) {
+
+    File tknFile = File('tkn.txt');
+    String tkn = tknFile.readAsStringSync();
+    log('token is $tkn');
+    telega = Telega(tkn: tkn);
+
     log('start loading users');
     if (json['users'] is List) {
       for (var user in json['users']) {
@@ -64,15 +67,17 @@ class GameGlobal {
     }
     //battles = json['battles'].map((battle) => Battle.fromJson(battle)).toList();
     log('loaded battles: ${battles.length}');
-    File tknFile = File('tkn.txt');
-    String tkn = tknFile.readAsStringSync();
-    log('token is $tkn');
-
-    telega = Telega(tkn: tkn);
 
     // start working with queue
     runQueueBatch();
     runBattles();
+
+    //inform users about restart of server
+    for (var user in users) {
+      //telega?.sendMessage(user, 'Server restarted');
+      //sleep(Duration(seconds: 1));
+      answerToStatus(user, 'Server restarted');
+    }
   }
   void save() {
     log('saving state');
@@ -104,10 +109,10 @@ class GameGlobal {
         var decodedMessage = message['message'];
         //log(decodedMessage.toString());
 
-        int messageId = decodedMessage['message_id'];
+        //int messageId = decodedMessage['message_id'];
         int fromId = decodedMessage['from']['id'];
         String fromFirstName = decodedMessage['from']['first_name'];
-        int date = decodedMessage['date'];
+        //int date = decodedMessage['date'];
         String text = decodedMessage['text'];
 
         log('$fromId: $text');
@@ -187,7 +192,7 @@ class GameGlobal {
     switch (text.toLowerCase()) {
       case '/start':
         if (user.status == 'justStarted') {
-          telega!.sendMessage(user, data['greetings']!,
+          telega?.sendMessage(user, data['greetings']!,
               reply: jsonEncode({
                 'inline_keyboard': [
                   [
@@ -265,7 +270,7 @@ class GameGlobal {
     battles.add(Battle(participants: newBattleUsers));
     for (User user in newBattleUsers) {
       user.status = 'inBattle';
-      telega!.sendMessage(user,
+      telega?.sendMessage(user,
           '${data['welcomeToBattle']!}\nYou got a list of weapons:\n${user.weaponsShowList()}');
     }
     save();
@@ -274,7 +279,7 @@ class GameGlobal {
   void answerToStatus(User user, String text) {
     switch (user.status!.toLowerCase()) {
       case 'juststarted':
-        telega!.sendMessage(
+        telega?.sendMessage(
             user, 'command is not recognized.\n${data['mainmenu']}',
             reply: jsonEncode({
               'inline_keyboard': [
